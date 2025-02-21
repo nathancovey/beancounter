@@ -30,44 +30,23 @@ export function StripeCallback() {
       }
 
       try {
-        // Exchange code for Stripe tokens
-        const { stripe_user_id, access_token, refresh_token, stripe_publishable_key } = 
-          await exchangeStripeCode(code);
+        const data = await exchangeStripeCode(code);
 
-        // Get account details
-        const accountResponse = await fetch('https://api.stripe.com/v1/accounts/' + stripe_user_id, {
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-          },
-        });
-
-        if (!accountResponse.ok) {
-          throw new Error('Failed to fetch Stripe account details');
-        }
-
-        const accountData = await accountResponse.json();
-
-        // Store the connection in Supabase
         const { error: dbError } = await supabase
           .from('stripe_connections')
           .upsert({
             user_id: user.id,
-            account_id: stripe_user_id,
-            account_name: accountData.business_profile?.name || accountData.email,
-            access_token,
-            refresh_token,
+            account_id: data.stripe_user_id,
+            account_name: data.stripe_user_email,
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
             property_ids: [],
-            livemode: accountData.livemode,
-          }, {
-            onConflict: 'user_id,account_id',
+            livemode: data.livemode,
           });
 
-        if (dbError) {
-          throw new Error(`Failed to store connection: ${dbError.message}`);
-        }
+        if (dbError) throw dbError;
 
         navigate('/connections?connected=true');
-
       } catch (error) {
         console.error('Error handling Stripe callback:', error);
         navigate('/connections?error=stripe_connection_failed');

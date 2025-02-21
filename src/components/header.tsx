@@ -1,5 +1,6 @@
-import { useAuth } from "@/integrations/supabase/auth-context"
-import { Button } from "@/components/ui/button"
+import React from "react"
+import { useAuth } from "../integrations/supabase/auth-context.tsx"
+import { Button } from "./ui/button.tsx"
 import { LogIn, LogOut } from "lucide-react"
 import {
   DropdownMenu,
@@ -7,16 +8,20 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ThemeToggle } from "@/components/theme-provider"
+} from "./ui/dropdown-menu.tsx"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar.tsx"
+import { ThemeToggle } from "./theme-provider.tsx"
+import beanIcon from "../assets/bean.svg"
 
 export function Header() {
   const { user, signInWithGoogle, signOut } = useAuth()
 
   return (
     <header className="flex justify-between items-center py-4">
-      <h1 className="text-2xl font-bold">Bean Counter</h1>
+      <h1 className="text-2xl font-bold flex items-center gap-2">
+        <img src={beanIcon} className="h-6 w-6 bean-icon" alt="Bean icon" />
+        Bean Counter
+      </h1>
       <div className="flex items-center gap-4">
         {user ? (
           <DropdownMenu>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MinusCircle } from "lucide-react";
 import GoogleAnalyticsIcon from '@/assets/google-analytics.svg';
 import { AnalyticsConnection, fetchGoogleAnalyticsProperties, getGoogleAuthUrl } from '@/integrations/google-analytics/ga-connection';
+import { getStripeAuthUrl } from '@/integrations/stripe/stripe-auth';
 
 interface Property {
   id: string;
@@ -55,11 +56,23 @@ export function ConnectionsPage() {
     if (!error && data) {
       setConnections(data);
       data.forEach(async (connection) => {
-        const properties = await fetchGoogleAnalyticsProperties(connection.access_token);
-        setAvailableProperties(prev => ({
-          ...prev,
-          [connection.account_email]: properties
-        }));
+        try {
+          const properties = await fetchGoogleAnalyticsProperties(connection);
+          if (properties) {
+            setAvailableProperties(prev => ({
+              ...prev,
+              [connection.account_email]: properties
+            }));
+          }
+        } catch (error) {
+          console.error(`Error fetching properties for ${connection.account_email}:`, error);
+          if (typeof error === 'object' && error && 'error' in error && 
+              typeof error.error === 'object' && error.error && 'code' in error.error) {
+            if (error.error.code === 401) {
+              console.warn('Authentication token may be expired');
+            }
+          }
+        }
       });
     }
   }
@@ -72,6 +85,8 @@ export function ConnectionsPage() {
     
     if (!error && data) {
       setStripeConnections(data);
+    } else {
+      console.error('Error loading Stripe connections:', error);
     }
   }
 
@@ -88,7 +103,9 @@ export function ConnectionsPage() {
   const connectStripeAccount = () => {
     try {
       setIsConnecting(true);
-      window.location.href = getStripeAuthUrl();
+      const authUrl = getStripeAuthUrl();
+      console.log('Redirecting to:', authUrl); // Debug log
+      window.location.href = authUrl;
     } catch (error) {
       console.error('Error connecting to Stripe:', error);
       setIsConnecting(false);

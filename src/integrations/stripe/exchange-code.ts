@@ -1,17 +1,12 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse,
-) {
+export default async function handler(req: Request) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
   }
 
-  const { code } = req.body;
+  const { code } = await req.json();
 
   if (!code) {
-    return res.status(400).json({ error: 'Code is required' });
+    return new Response(JSON.stringify({ error: 'Code is required' }), { status: 400 });
   }
 
   try {
@@ -33,9 +28,9 @@ export default async function handler(
       throw new Error(data.error_description || data.error);
     }
 
-    return res.status(200).json(data);
+    return new Response(JSON.stringify(data), { status: 200 });
   } catch (error) {
     console.error('Error exchanging code:', error);
-    return res.status(500).json({ error: 'Failed to exchange code' });
+    return new Response(JSON.stringify({ error: 'Failed to exchange code' }), { status: 500 });
   }
 } 

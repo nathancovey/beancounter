@@ -39,7 +39,7 @@ export function Dashboard() {
       startTime.setDate(startTime.getDate() - 7);
 
       const statsPromises = connections.flatMap(async (connection: AnalyticsConnection) => {
-        const properties = await fetchGoogleAnalyticsProperties(connection.access_token);
+        const properties = await fetchGoogleAnalyticsProperties(connection);
         
         const propertyPromises = properties
           .filter(property => connection.property_ids.includes(property.id))

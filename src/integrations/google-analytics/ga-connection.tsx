@@ -1,5 +1,6 @@
 export interface AnalyticsConnection {
   access_token: string;
+  refresh_token: string;
   property_ids: string[];
   token_expiry: string;
   account_email: string;
@@ -35,14 +36,27 @@ interface RunReportResponse {
   }>;
 }
 
-export async function fetchGoogleAnalyticsProperties(accessToken: string) {
+export async function fetchGoogleAnalyticsProperties(connection: AnalyticsConnection) {
   try {
+    const { refresh_token, token_expiry } = connection;
+    let { access_token } = connection;
+    
+    // Check if token needs refresh
+    if (isTokenExpired(token_expiry)) {
+      const refreshResult = await refreshAccessToken(refresh_token);
+      if (refreshResult) {
+        access_token = refreshResult.access_token;
+        // Update the connection in your storage with new token and expiry
+        // You'll need to implement this part based on your storage method
+      }
+    }
+
     // First, get the account summaries which includes GA4 properties
     const summariesResponse = await fetch(
       'https://analyticsadmin.googleapis.com/v1beta/accountSummaries',
       {
         headers: { 
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${access_token}`,
           'Content-Type': 'application/json'
         }
       }
@@ -63,7 +77,7 @@ export async function fetchGoogleAnalyticsProperties(accessToken: string) {
         const dataStreamsResponse = await fetch(
           `https://analyticsadmin.googleapis.com/v1beta/properties/${propertyId}/dataStreams`,
           {
-            headers: { Authorization: `Bearer ${accessToken}` }
+            headers: { Authorization: `Bearer ${access_token}` }
           }
         );
         
@@ -184,4 +198,39 @@ export async function fetchVisitorData(accessToken: string, propertyId: string, 
     console.error('Error fetching visitor data:', error);
     return { totalVisitors: 0, totalRevenue: 0, hourlyData: [] };
   }
+}
+
+export async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
+  try {
+    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const GOOGLE_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to refresh token');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return null;
+  }
+}
+
+export function isTokenExpired(expiryTime: string): boolean {
+  const expiry = new Date(expiryTime);
+  // Return true if token expires in less than 5 minutes
+  return expiry.getTime() - Date.now() < 5 * 60 * 1000;
 }

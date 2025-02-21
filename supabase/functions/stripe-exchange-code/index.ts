@@ -1,22 +1,61 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
-
-// Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-
 console.log("Hello from Functions!")
 
 Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+  console.log('Edge function called');
+  
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { 
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      }
+    })
   }
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
+  try {
+    const { code } = await req.json()
+    console.log('Received code:', code);
+
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_secret: Deno.env.get('STRIPE_SECRET_KEY')!,
+      client_id: Deno.env.get('STRIPE_CLIENT_ID')!,
+    });
+
+    const response = await fetch('https://connect.stripe.com/oauth/token', {
+      method: 'POST',
+      body: params,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error_description || data.error);
+    }
+
+    return new Response(
+      JSON.stringify(data),
+      { 
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Edge function error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        }
+      }
+    )
+  }
 })
 
 /* To invoke locally:

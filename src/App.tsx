@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { GoogleAnalyticsCallback } from './integrations/google-analytics/ga-callback'
 import { useAuth } from "./integrations/supabase/auth-context"
 import { ConnectionsPage } from '@/pages/connections'
-import { StripeCallback } from './integrations/stripe/stripe-callback'
+import { StripeCallback } from '@/integrations/stripe/stripe-callback'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
